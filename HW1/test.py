@@ -1,10 +1,12 @@
-def func(a, **test):
-    print(a)
-    if test:
-        print(test.keys())
-        print(test.values())
+from HW1.DNN import COVID19Dataset
+from torch.utils.data import DataLoader
+from HW1.DNN import NeuralNet
 
-
-a = 0
-b = {'1': 1, '2': 2}
-func(a, **b)
+dataset = COVID19Dataset('covid.test.csv', 'test')
+data_loader = DataLoader(dataset, 270, shuffle=False, drop_last=False, num_workers=0, pin_memory=True)
+tt_set = data_loader
+model = NeuralNet(tt_set.dataset.dim).to('cuda')
+model.eval()
+preds = []
+for x in tt_set:
+    print(x)

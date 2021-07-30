@@ -1,3 +1,4 @@
+import csv
 import os
 
 import matplotlib.pyplot as plt
@@ -7,22 +8,6 @@ import torch
 from matplotlib.pyplot import figure
 from torch import nn
 from torch.utils.data import Dataset, DataLoader
-import csv
-
-print(torch.cuda.is_available())
-tr_path = 'covid.train.csv'
-tt_path = 'covid.test.csv'
-#########################
-# 固定随机数，保证网络输出一致
-#########################
-
-myseed = 999  # 设置种子
-torch.backends.cudnn.deterministic = True  # 固定cuda的随机数种子
-torch.backends.cudnn.benchmark = False  # benchmark可以让cuda自动寻找合适的算法，但是这样每次网络的输出就不一样
-np.random.seed(myseed)  # 设置numpy的种子
-torch.manual_seed(myseed)
-if torch.cuda.is_available():
-    torch.cuda.manual_seed_all(myseed)
 
 
 def get_device():
@@ -43,7 +28,7 @@ def plot_learning_curve(loss_record, title=''):
     plt.ylabel('MSE loss')
     plt.title('Learning curve of {}'.format(title))
     plt.legend()
-    plt.show()
+    # plt.show()
 
 
 def plot_pred(dv_set, model, device, lim=35., preds=None, targets=None):
@@ -68,7 +53,7 @@ def plot_pred(dv_set, model, device, lim=35., preds=None, targets=None):
     plt.xlabel('ground truth value')
     plt.ylabel('predicted value')
     plt.title('Ground Truth v.s. Prediction')
-    plt.show()
+    # plt.show()
 
 
 ###############################
@@ -172,9 +157,10 @@ def dev(dv_set, model, device):
     return total_loss
 
 
-def  test(tt_set, model, device):
+def test(tt_set, model, device):
     model.eval()  # set model to evaluation mode
     preds = []
+    # print(tt_set.dataset)
     for x in tt_set:
         x = x.to(device)
         with torch.no_grad():
@@ -217,7 +203,35 @@ def train(tr_set, dv_set, model, config, device):
     return min_mse, loss_record
 
 
+def save_pred(preds, file):
+    ''' Save predictions to specified file '''
+    print('Saving results to {}'.format(file))
+    with open(file, 'w') as fp:
+        writer = csv.writer(fp)
+        writer.writerow(['id', 'tested_positive'])
+        for i, p in enumerate(preds):
+            writer.writerow([i, p])
+
+
 if __name__ == '__main__':
+    print(torch.cuda.is_available())
+    #########################
+    # 固定随机数，保证网络输出一致
+    #########################
+
+    myseed = 999  # 设置种子
+    torch.backends.cudnn.deterministic = True  # 固定cuda的随机数种子
+    torch.backends.cudnn.benchmark = False  # benchmark可以让cuda自动寻找合适的算法，但是这样每次网络的输出就不一样
+    np.random.seed(myseed)  # 设置numpy的种子
+    torch.manual_seed(myseed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(myseed)
+
+    #########
+    # 设置参数
+    #########
+    tr_path = 'covid.train.csv'
+    tt_path = 'covid.test.csv'
     device = get_device()
     os.makedirs('models', exist_ok=True)
     target_only = False
@@ -247,17 +261,6 @@ if __name__ == '__main__':
     ckpt = torch.load(config['save_path'], map_location='cpu')  # Load your best model
     model.load_state_dict(ckpt)
     plot_pred(dv_set, model, device)  # Show prediction on the validation set
-
-
-    def save_pred(preds, file):
-        ''' Save predictions to specified file '''
-        print('Saving results to {}'.format(file))
-        with open(file, 'w') as fp:
-            writer = csv.writer(fp)
-            writer.writerow(['id', 'tested_positive'])
-            for i, p in enumerate(preds):
-                writer.writerow([i, p])
-
 
     ############
     # 保存预测结果
